@@ -86,6 +86,20 @@ def neff(weights):
     return 1.0 / np.sum(np.square(weights))
 
 
+def getCentreFromWindow(win):
+    xc = win[0] + win[2] / 2
+    yc = win[1] + win[3] / 2
+    centre = (xc, yc)
+    return centre
+
+
+def getTrackWindow(centre, win):
+    x = int(np.floor(centre[0] - win[2] / 2))
+    y = int(np.floor(centre[1] - win[3] / 2))
+    track_window = (x, y, win[2], win[3])
+    return track_window
+
+
 def resample(particles, weights, th, method):
     if neff(weights) < th:
         print("Resampling")
@@ -221,3 +235,4 @@ if __name__ == '__main__':
     # cap = cv2.VideoCapture('D:\\KP\Code\\419-Computer-Vision\\Project\\Girl\\Girl\\img\\%04d.jpg')
     # print(cap.isOpened())
     run_pf()
+
