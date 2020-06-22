@@ -1,6 +1,7 @@
 import cv2
 import os
 import numpy as np
+import particle_filter as pf
 
 # Data Sets
 DATASET_PATH = "data/"
@@ -30,6 +31,15 @@ PARAMS = [1, 1,
           3, 1]
 PARAM_NUMBER = PARAMS[DATASET_NUMBER]
 
+TRACK_NAME = ["Meanshift", "Particle", "Kalman"]
+TRACK_NUMBER = 1
+TRACK_METHOD = TRACK_NAME[TRACK_NUMBER]
+
+# Particle Filter Parameters
+STD = 25
+NUM_PARTICLES = 500
+PF_RESAMPLE_THRESH = 0.85
+PF_RESAMPLE_METHOD = 2
 
 if __name__ == '__main__':
 
@@ -64,6 +74,19 @@ if __name__ == '__main__':
     if SAVE_IMAGES:
         if not os.path.exists(OUTPUT_PATH):
             os.mkdir(OUTPUT_PATH)
+
+    # Set up tracking methods
+    # particles = []
+    # weights = []
+    if TRACK_NUMBER == 0:
+        # Only Meanshift
+        pass
+    elif TRACK_NUMBER == 1:  # Particle
+        particles = pf.create_gaussian_particles(mean=(x + w / 2, y + h / 2), std=(STD, STD), N=NUM_PARTICLES)
+        weights = np.ones(NUM_PARTICLES) / NUM_PARTICLES
+        # Use Particle Filter also
+    elif TRACK_NUMBER == 2:  # Kalman
+        pass
 
     # 1) Set parameters according to dataset
     if PARAM_NUMBER == 1:
@@ -118,12 +141,32 @@ if __name__ == '__main__':
         # 9) Calculate the BackProject of frame with the histogram
         dst = cv2.calcBackProject([hsv], hist_channels, roi_hist, hist_range, 1)
 
-        # 10) Perform meanshift tracking
-        ret, track_window = cv2.meanShift(dst, track_window, term_crit)
+        # 10 a) Perform meanshift tracking
+        ret, track_window_obs = cv2.meanShift(dst, track_window, term_crit)
+
+        # 10 b) Use Particle Filter to improve observation accuracy
+        if TRACK_NUMBER == 1:
+            # TODO add velocity model
+            # use last XX frames to extrapolate motion using np.polyfit
+            # Will help estimate recent velocity of motion
+            # Problem: estimated centroid is very random, can lead to high variance of movement
+            # Solution: Can consider using better weighting model, or less randomness
+            # Otherwise just try assuming a linear model and see how it works
+            pf.predict(particles, vel=None, std=STD)
+            centre_obs = pf.getCentreFromWindow(track_window_obs)
+            noise = np.random.uniform(0.0, STD)
+            centre_obs = tuple(p + noise for p in centre_obs)
+            pf.update(particles, weights, 'gaussian', centre_obs)
+            centre_est, _ = pf.estimate(particles, weights)
+            track_window = pf.getTrackWindow(centre_est, track_window_obs)
+            # TODO Use evalPart to estimate how good or bad the particle is rather than distance from centre
+            # evalPart checks how well each particle fits the histogram obtained using backprop
+
+            pf.resample(particles, weights, PF_RESAMPLE_THRESH * NUM_PARTICLES, PF_RESAMPLE_METHOD)
 
         # 11) Draw the resultant box on image
         x, y, w, h = track_window
-        output_img = cv2.rectangle(frame, (x, y), (x+w, y+h), 255, 2)
+        output_img = cv2.rectangle(frame, (x, y), (x + w, y + h), 255, 2)
 
         if DEBUG:
             cv2.imshow("backprop", dst)
