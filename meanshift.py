@@ -1,6 +1,7 @@
 import cv2
 import os
 import numpy as np
+import particle_filter as pf
 
 # Data Sets
 DATASET_PATH = "data/"
@@ -30,6 +31,17 @@ PARAMS = [1, 1,
           3, 1]
 PARAM_NUMBER = PARAMS[DATASET_NUMBER]
 
+
+TRACK_NAME = ["Meanshift", "Particle", "Kalman"]
+TRACK_NUMBER = 1
+TRACK_METHOD = TRACK_NAME[TRACK_NUMBER]
+
+
+# Particle Filter Parameters
+STD = 25
+NUM_PARTICLES = 500
+PF_RESAMPLE_THRESH = 0.85
+PF_RESAMPLE_METHOD = 2
 
 if __name__ == '__main__':
 
@@ -64,6 +76,19 @@ if __name__ == '__main__':
     if SAVE_IMAGES:
         if not os.path.exists(OUTPUT_PATH):
             os.mkdir(OUTPUT_PATH)
+
+    # Set up tracking methods
+    # particles = []
+    # weights = []
+    if TRACK_NUMBER == 0:
+        # Only Meanshift
+        pass
+    elif TRACK_NUMBER == 1: # Particle
+        particles = pf.create_gaussian_particles(mean=(x+w/2, y+h/2), std=(STD, STD), N=NUM_PARTICLES)
+        weights = np.ones(NUM_PARTICLES) / NUM_PARTICLES
+        # Use Particle Filter also
+    elif TRACK_NUMBER == 2: # Kalman
+        pass
 
     # 1) Set parameters according to dataset
     if PARAM_NUMBER == 1:
@@ -118,8 +143,19 @@ if __name__ == '__main__':
         # 9) Calculate the BackProject of frame with the histogram
         dst = cv2.calcBackProject([hsv], hist_channels, roi_hist, hist_range, 1)
 
-        # 10) Perform meanshift tracking
-        ret, track_window = cv2.meanShift(dst, track_window, term_crit)
+        # 10 a) Perform meanshift tracking
+        ret, track_window_obs = cv2.meanShift(dst, track_window, term_crit)
+
+        # 10 b) Use Particle Filter to improve observation accuracy
+        if TRACK_NUMBER == 1:
+            pf.predict(particles, vel=None, std=STD)
+            centre_obs = pf.getCentreFromWindow(track_window_obs)
+            noise = np.random.uniform(0.0, STD)
+            centre_obs = tuple(p + noise for p in centre_obs)
+            pf.update(particles, weights, 'gaussian', centre_obs)
+            centre_est, _ = pf.estimate(particles, weights)
+            track_window = pf.getTrackWindow(centre_est, track_window_obs)
+            pf.resample(particles, weights, PF_RESAMPLE_THRESH * NUM_PARTICLES, PF_RESAMPLE_METHOD)
 
         # 11) Draw the resultant box on image
         x, y, w, h = track_window
@@ -127,10 +163,14 @@ if __name__ == '__main__':
 
         if DEBUG:
             cv2.imshow("backprop", dst)
+            if TRACK_NUMBER == 1:
+                pf.draw_particles(frame, particles)
+                frame = cv2.circle(frame, (int(centre_est[0]), int(centre_est[1])), 2, (0, 255, 0), -1)
+                frame = cv2.circle(frame, (int(centre_obs[0]), int(centre_obs[1])), 2, (255, 0, 0), -1)
 
         # 12) Display the output
         cv2.imshow('tracking_output', output_img)
-        k = cv2.waitKey(30)
+        k = cv2.waitKey(0)
 
         # Print the output images
         if SAVE_IMAGES:
