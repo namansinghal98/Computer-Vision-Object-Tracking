@@ -31,7 +31,7 @@ def create_gaussian_particles(mean, std, N):
 # Move particles based on estimated velocity of the object
 def predict(particles, vel=None, std=15):
     N = len(particles)
-    if vel is None:
+    if vel is None or vel != vel:  # NaN check
         vel = [0, 0]
 
     particles[:, 0] += vel[0] + (randn(N) * std)
@@ -100,20 +100,40 @@ def getTrackWindow(centre, win):
     return track_window
 
 
+def evalParticle(backproj, particlesT):
+    p = [int(x) for x in particlesT[0]]
+    q = [int(x) for x in particlesT[1]]
+    return backproj[q, p]
+
+
 def resample(particles, weights, th, method):
     if neff(weights) < th:
         print("Resampling")
         indexes = []
-        if method == 1:
+        if method == 0:
             indexes = systematic_resample(weights)
-        elif method == 2:
+        elif method == 1:
             indexes = multinomial_resample(weights)
         elif method == 2:
             indexes = stratified_resample(weights)
-        elif method == 2:
+        elif method == 3:
             indexes = residual_resample(weights)
         resample_from_index(particles, weights, indexes)
         assert np.allclose(weights, 1 / len(particles))
+
+
+def estVelocity(x_pos, y_pos, t_count=15, poly=1):
+    if len(x_pos) > t_count:
+        x_pos = x_pos[-t_count:]  # the colon comes after the negative index
+        y_pos = y_pos[-t_count:]
+    elif len(x_pos) < t_count:
+        return None
+    t = list(range(1, len(x_pos) + 1))
+    x_model = np.polyfit(t, x_pos, 1)
+    y_model = np.polyfit(t, y_pos, 1)
+    x_vel = np.poly1d(x_model)
+    y_vel = np.poly1d(y_model)
+    return [(x_vel(t[-1]) - x_vel(t[0])) / (t[-1] - t[0]), (y_vel(t[-1]) - y_vel(t[0])) / (t[-1] - t[0])]
 
 
 def draw_particles(image, particles, color=(0, 0, 255)):
@@ -235,4 +255,3 @@ if __name__ == '__main__':
     # cap = cv2.VideoCapture('D:\\KP\Code\\419-Computer-Vision\\Project\\Girl\\Girl\\img\\%04d.jpg')
     # print(cap.isOpened())
     run_pf()
-
