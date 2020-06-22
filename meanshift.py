@@ -166,14 +166,18 @@ if __name__ == '__main__':
 
         # 11) Draw the resultant box on image
         x, y, w, h = track_window
-        output_img = cv2.rectangle(frame, (x, y), (x + w, y + h), 255, 2)
+        output_img = cv2.rectangle(frame, (x, y), (x+w, y+h), 255, 2)
 
         if DEBUG:
             cv2.imshow("backprop", dst)
+            if TRACK_NUMBER == 1:
+                pf.draw_particles(frame, particles)
+                frame = cv2.circle(frame, (int(centre_est[0]), int(centre_est[1])), 2, (0, 255, 0), -1)
+                frame = cv2.circle(frame, (int(centre_obs[0]), int(centre_obs[1])), 2, (255, 0, 0), -1)
 
         # 12) Display the output
         cv2.imshow('tracking_output', output_img)
-        k = cv2.waitKey(30)
+        k = cv2.waitKey(0)
 
         # Print the output images
         if SAVE_IMAGES:
