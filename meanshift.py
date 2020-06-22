@@ -31,17 +31,16 @@ PARAMS = [1, 1,
           3, 1]
 PARAM_NUMBER = PARAMS[DATASET_NUMBER]
 
-
 TRACK_NAME = ["Meanshift", "Particle", "Kalman"]
 TRACK_NUMBER = 1
 TRACK_METHOD = TRACK_NAME[TRACK_NUMBER]
 
-
 # Particle Filter Parameters
-STD = 25
-NUM_PARTICLES = 500
+STD = 5
+NUM_PARTICLES = 100
 PF_RESAMPLE_THRESH = 0.85
 PF_RESAMPLE_METHOD = 2
+GOOD_THRESH = 155 # Lot of 158s in Elephant
 
 if __name__ == '__main__':
 
@@ -83,11 +82,13 @@ if __name__ == '__main__':
     if TRACK_NUMBER == 0:
         # Only Meanshift
         pass
-    elif TRACK_NUMBER == 1: # Particle
-        particles = pf.create_gaussian_particles(mean=(x+w/2, y+h/2), std=(STD, STD), N=NUM_PARTICLES)
+    elif TRACK_NUMBER == 1:  # Particle
+        particles = pf.create_gaussian_particles(mean=(x + w / 2, y + h / 2), std=(STD, STD), N=NUM_PARTICLES)
         weights = np.ones(NUM_PARTICLES) / NUM_PARTICLES
+        x_pos = []
+        y_pos = []
         # Use Particle Filter also
-    elif TRACK_NUMBER == 2: # Kalman
+    elif TRACK_NUMBER == 2:  # Kalman
         pass
 
     # 1) Set parameters according to dataset
@@ -145,17 +146,52 @@ if __name__ == '__main__':
 
         # 10 a) Perform meanshift tracking
         ret, track_window_obs = cv2.meanShift(dst, track_window, term_crit)
-
+        if TRACK_NUMBER == 0:
+            track_window = track_window_obs
         # 10 b) Use Particle Filter to improve observation accuracy
-        if TRACK_NUMBER == 1:
-            pf.predict(particles, vel=None, std=STD)
+        elif TRACK_NUMBER == 1:
+            # TODO add velocity model
+            # use last XX frames to extrapolate motion using np.polyfit
+            # Will help estimate recent velocity of motion
+            # Problem: estimated centroid is very random, can lead to high variance of movement
+            # Solution: Can consider using better weighting model, or less randomness
+            # Otherwise just try assuming a linear model and see how it works
+
+            # i) Estimate current velocity of object using linear regression
+            vel = pf.estVelocity(x_pos, y_pos, t_count=2) # Use 3 with KinBall3
+
+            # ii) Predict position of object
+            pf.predict(particles, vel=vel, std=STD)
+
             centre_obs = pf.getCentreFromWindow(track_window_obs)
             noise = np.random.uniform(0.0, STD)
             centre_obs = tuple(p + noise for p in centre_obs)
+
+            # iii) Update weights of particles based on dist from observation
             pf.update(particles, weights, 'gaussian', centre_obs)
+
+            # iv) Esimate new position based on particles and weights
             centre_est, _ = pf.estimate(particles, weights)
+
+            x_pos.append(centre_est[0])
+            y_pos.append(centre_est[1])
             track_window = pf.getTrackWindow(centre_est, track_window_obs)
-            pf.resample(particles, weights, PF_RESAMPLE_THRESH * NUM_PARTICLES, PF_RESAMPLE_METHOD)
+
+            # TODO Use evalPart to estimate how good or bad the particle is rather than distance from centre
+            # evalPart checks how well each particle fits the histogram obtained using backprop
+            particles = particles.clip(np.zeros(2), np.array((frame.shape[1], frame.shape[0]))-1)
+
+            # v) Evaluate particles based on backprop
+            f = pf.evalParticle(dst, particles.T)
+            good = particles[f >= GOOD_THRESH]
+            bad = particles[f < GOOD_THRESH]
+
+            # vi) Resample particles if required
+            if good.size < PF_RESAMPLE_THRESH * NUM_PARTICLES:
+                pf.resample(particles, weights, 1 * NUM_PARTICLES, PF_RESAMPLE_METHOD)
+            # pf.resample(particles, weights, PF_RESAMPLE_THRESH * NUM_PARTICLES, PF_RESAMPLE_METHOD)
+        elif TRACK_NUMBER == 2:
+            pass
 
         # 11) Draw the resultant box on image
         x, y, w, h = track_window
@@ -164,7 +200,8 @@ if __name__ == '__main__':
         if DEBUG:
             cv2.imshow("backprop", dst)
             if TRACK_NUMBER == 1:
-                pf.draw_particles(frame, particles)
+                pf.draw_particles(frame, good, (255, 0, 0))
+                pf.draw_particles(frame, bad)
                 frame = cv2.circle(frame, (int(centre_est[0]), int(centre_est[1])), 2, (0, 255, 0), -1)
                 frame = cv2.circle(frame, (int(centre_obs[0]), int(centre_obs[1])), 2, (255, 0, 0), -1)
 
