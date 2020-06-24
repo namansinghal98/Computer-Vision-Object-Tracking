@@ -5,8 +5,10 @@ import imutils
 
 # name of the folder containing the frames
 DATASET_PATH = "data/"
-DATA_SETS = ["CarChase1", "CarChase2"]
-DATASET_NUMBER = 1
+DATA_SETS = ["CarChase1", "CarChase2", 'KinBall3',  # 0,1,2 [Occlusion: Kinball3]
+             'DriftCar1', 'Boxing1', 'Elephants']  # 3,4,5 [Occlusion: Boxing1, Elephants]
+DATASET_NUMBER = 3
+
 DATASET_NAME = DATA_SETS[DATASET_NUMBER]
 DATASET_FOLDER = DATASET_PATH + DATASET_NAME + "/img"
 GROUND_TRUTH_PATH = DATASET_PATH + DATASET_NAME + "/groundtruth_rect.txt"
@@ -37,6 +39,12 @@ def markObject(stPoint, enPoint, image, count, imageName):
 
 
 if __name__ == "__main__":
+
+    # setup output folder
+    if SAVE_IMAGES:
+        if not os.path.exists(OUTPUT_PATH):
+            os.makedirs(OUTPUT_PATH)
+
     kf = cv.KalmanFilter(6, 4, 0)
     dt = float(20 / 600)
     state = None
@@ -88,7 +96,7 @@ if __name__ == "__main__":
     first_detect = True
     files = os.listdir(DATASET_FOLDER)
 
-    while i < 400:
+    while i < 600:
         print("frame" + str(i))
         i = i + 1
         file_no = str(i)

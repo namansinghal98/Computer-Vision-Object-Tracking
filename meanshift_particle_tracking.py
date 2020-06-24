@@ -5,18 +5,16 @@ import particle_filter as pf
 
 # Data Sets
 DATASET_PATH = "data/"
-# DATASET_PATH = "data/TinyTLP/"
-DATA_SETS = ["CarChase1", "CarChase2",  # 0,1
-             'ISS', 'Boat', 'KinBall3',  # 2,3,4 [Occlusion: Kinball3]
-             'DriftCar1', 'Drone1', 'Boxing1', 'Bike',  # 5,6,7,8 [Occlusion: Boxing1]
-             'MotorcycleChase', 'Elephants']  # 9, 10 [Occlusion: Elephants]
-DATASET_NUMBER = 7
+
+DATA_SETS = ["CarChase1", "CarChase2", 'KinBall3',  # 0,1,2 [Occlusion: Kinball3]
+             'DriftCar1', 'Boxing1', 'Elephants']  # 3,4,5 [Occlusion: Boxing1, Elephants]
+DATASET_NUMBER = 0
 
 # Constants
 DATASET_NAME = DATA_SETS[DATASET_NUMBER]
 DATASET_FOLDER = DATASET_PATH + DATASET_NAME + "/img"
 GROUND_TRUTH_PATH = DATASET_PATH + DATASET_NAME + "/groundtruth_rect.txt"
-OUTPUT_PATH = "output/particle/" + DATASET_NAME + "/"
+OUTPUT_PATH = "output/meanshift_particle/" + DATASET_NAME + "/"
 
 # Save Images or Not
 SAVE_IMAGES = True
@@ -25,10 +23,8 @@ SAVE_IMAGES = True
 DEBUG = True
 
 # Dataset Parameter
-PARAMS = [1, 1,
-          2, 2, 2,
-          3, 3, 3, 3,
-          3, 1]
+PARAMS = [1, 1, 2,
+          3, 3, 1]
 PARAM_NUMBER = PARAMS[DATASET_NUMBER]
 
 # Particle Filter Parameters

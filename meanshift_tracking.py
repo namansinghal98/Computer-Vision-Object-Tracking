@@ -4,12 +4,9 @@ import numpy as np
 
 # Data Sets
 DATASET_PATH = "data/"
-# DATASET_PATH = "data/TinyTLP/"
-DATA_SETS = ["CarChase1", "CarChase2",  # 0,1
-             'ISS', 'Boat', 'KinBall3',  # 2,3,4 [Occlusion: Kinball3]
-             'DriftCar1', 'Drone1', 'Boxing1', 'Bike',  # 5,6,7,8 [Occlusion: Boxing1]
-             'MotorcycleChase', 'Elephants']  # 9, 10 [Occlusion: Elephants]
-DATASET_NUMBER = 10
+DATA_SETS = ["CarChase1", "CarChase2", 'KinBall3',  # 0,1,2 [Occlusion: Kinball3]
+             'DriftCar1', 'Boxing1', 'Elephants']  # 3,4,5 [Occlusion: Boxing1, Elephants]
+DATASET_NUMBER = 5
 
 # Constants
 DATASET_NAME = DATA_SETS[DATASET_NUMBER]
@@ -18,16 +15,14 @@ GROUND_TRUTH_PATH = DATASET_PATH + DATASET_NAME + "/groundtruth_rect.txt"
 OUTPUT_PATH = "output/meanshift/" + DATASET_NAME + "/"
 
 # Save Images or Not
-SAVE_IMAGES = False
+SAVE_IMAGES = True
 
 # Debugging mode for extra outputs
-DEBUG = True
+DEBUG = False
 
 # Dataset Parameter
-PARAMS = [1, 1,
-          2, 2, 2,
-          3, 3, 3, 3,
-          3, 1]
+PARAMS = [1, 1, 2,
+          3, 3, 1]
 PARAM_NUMBER = PARAMS[DATASET_NUMBER]
 
 

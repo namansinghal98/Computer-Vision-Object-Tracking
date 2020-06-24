@@ -55,11 +55,11 @@ def find_object(image, template, method):
         print("Error: Invalid Template Matching Method.")
         exit(0)
 
-    for scale in np.linspace(0.2, 1.8, 40):
+    for scale in np.linspace(0.4, 1.6, 20):
         resized = imutils.resize(image, width=int(image.shape[1] * scale))
         r = image.shape[1] / float(resized.shape[1])
         if resized.shape[0] < h or resized.shape[1] < w:
-            break
+            continue
         # resized = cv.Canny(resized, 50, 200)
         # det_coord = templateMatching(resized, template)
         result = cv.matchTemplate(resized, template, method)
