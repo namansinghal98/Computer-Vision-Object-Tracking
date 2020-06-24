@@ -10,16 +10,16 @@ DATA_SETS = ["CarChase1", "CarChase2",  # 0,1
              'ISS', 'Boat', 'KinBall3',  # 2,3,4 [Occlusion: Kinball3]
              'DriftCar1', 'Drone1', 'Boxing1', 'Bike',  # 5,6,7,8 [Occlusion: Boxing1]
              'MotorcycleChase', 'Elephants']  # 9, 10 [Occlusion: Elephants]
-DATASET_NUMBER = 10
+DATASET_NUMBER = 7
 
 # Constants
 DATASET_NAME = DATA_SETS[DATASET_NUMBER]
 DATASET_FOLDER = DATASET_PATH + DATASET_NAME + "/img"
 GROUND_TRUTH_PATH = DATASET_PATH + DATASET_NAME + "/groundtruth_rect.txt"
-OUTPUT_PATH = "output/meanshift/" + DATASET_NAME + "/"
+OUTPUT_PATH = "output/particle/" + DATASET_NAME + "/"
 
 # Save Images or Not
-SAVE_IMAGES = False
+SAVE_IMAGES = True
 
 # Debugging mode for extra outputs
 DEBUG = True
@@ -36,11 +36,12 @@ TRACK_NUMBER = 1
 TRACK_METHOD = TRACK_NAME[TRACK_NUMBER]
 
 # Particle Filter Parameters
-STD = 5
-NUM_PARTICLES = 100
-PF_RESAMPLE_THRESH = 0.85
+STD = 10
+NUM_PARTICLES = 200
+PF_RESAMPLE_THRESH = 0.5
 PF_RESAMPLE_METHOD = 2
-GOOD_THRESH = 155 # Lot of 158s in Elephant
+GOOD_THRESH = 150
+T_COUNT = 60
 
 if __name__ == '__main__':
 
@@ -74,7 +75,13 @@ if __name__ == '__main__':
     # setup output folder
     if SAVE_IMAGES:
         if not os.path.exists(OUTPUT_PATH):
-            os.mkdir(OUTPUT_PATH)
+            os.makedirs(OUTPUT_PATH)
+
+        # Use this for Linux
+        # fourcc = cv2.VideoWriter_fourcc('M', 'J', 'P', 'G')
+        fourcc = cv2.VideoWriter_fourcc('D', 'I', 'V', 'X')
+        # Make sure size matches output frame i.e. y, x
+        out = cv2.VideoWriter(OUTPUT_PATH + 'video.avi', fourcc, 30, (first_frame.shape[1], first_frame.shape[0]))
 
     # Set up tracking methods
     # particles = []
@@ -158,7 +165,7 @@ if __name__ == '__main__':
             # Otherwise just try assuming a linear model and see how it works
 
             # i) Estimate current velocity of object using linear regression
-            vel = pf.estVelocity(x_pos, y_pos, t_count=2) # Use 3 with KinBall3
+            vel = pf.estVelocity(x_pos, y_pos, t_count=T_COUNT) # Use 3 with KinBall3
 
             # ii) Predict position of object
             pf.predict(particles, vel=vel, std=STD)
@@ -200,17 +207,21 @@ if __name__ == '__main__':
         if DEBUG:
             cv2.imshow("backprop", dst)
             if TRACK_NUMBER == 1:
-                pf.draw_particles(frame, good, (255, 0, 0))
-                pf.draw_particles(frame, bad)
-                frame = cv2.circle(frame, (int(centre_est[0]), int(centre_est[1])), 2, (0, 255, 0), -1)
-                frame = cv2.circle(frame, (int(centre_obs[0]), int(centre_obs[1])), 2, (255, 0, 0), -1)
+                pf.draw_particles(frame, good, (0, 255, 0))
+                pf.draw_particles(frame, bad, (0, 255, 0))
+                # frame = cv2.circle(frame, (int(centre_est[0]), int(centre_est[1])), 2, (0, 255, 0), -1)
+                # frame = cv2.circle(frame, (int(centre_obs[0]), int(centre_obs[1])), 2, (255, 0, 0), -1)
 
         # 12) Display the output
         cv2.imshow('tracking_output', output_img)
-        k = cv2.waitKey(0)
+        k = cv2.waitKey(30)
 
         # Print the output images
         if SAVE_IMAGES:
             output_file = OUTPUT_PATH + "{0:0=5d}".format(i) + '.jpg'
             print(output_file)
             cv2.imwrite(output_file, output_img)
+            out.write(frame)
+
+    if SAVE_IMAGES:
+        out.release()
