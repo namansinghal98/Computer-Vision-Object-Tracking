@@ -43,6 +43,7 @@ PF_RESAMPLE_METHOD = 2
 GOOD_THRESH = 150
 T_COUNT = 60
 
+
 if __name__ == '__main__':
 
     # Get the ground truth information
@@ -166,7 +167,6 @@ if __name__ == '__main__':
 
             # i) Estimate current velocity of object using linear regression
             vel = pf.estVelocity(x_pos, y_pos, t_count=T_COUNT) # Use 3 with KinBall3
-
             # ii) Predict position of object
             pf.predict(particles, vel=vel, std=STD)
 
