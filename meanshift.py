@@ -10,7 +10,7 @@ DATA_SETS = ["CarChase1", "CarChase2",  # 0,1
              'ISS', 'Boat', 'KinBall3',  # 2,3,4 [Occlusion: Kinball3]
              'DriftCar1', 'Drone1', 'Boxing1', 'Bike',  # 5,6,7,8 [Occlusion: Boxing1]
              'MotorcycleChase', 'Elephants']  # 9, 10 [Occlusion: Elephants]
-DATASET_NUMBER = 10
+DATASET_NUMBER = 7
 
 # Constants
 DATASET_NAME = DATA_SETS[DATASET_NUMBER]
@@ -19,7 +19,7 @@ GROUND_TRUTH_PATH = DATASET_PATH + DATASET_NAME + "/groundtruth_rect.txt"
 OUTPUT_PATH = "output/particle/" + DATASET_NAME + "/"
 
 # Save Images or Not
-SAVE_IMAGES = False
+SAVE_IMAGES = True
 
 # Debugging mode for extra outputs
 DEBUG = True
@@ -36,12 +36,12 @@ TRACK_NUMBER = 1
 TRACK_METHOD = TRACK_NAME[TRACK_NUMBER]
 
 # Particle Filter Parameters
-STD = 15
+STD = 10
 NUM_PARTICLES = 200
-PF_RESAMPLE_THRESH = 0.85
+PF_RESAMPLE_THRESH = 0.5
 PF_RESAMPLE_METHOD = 2
 GOOD_THRESH = 150
-T_COUNT = 15
+T_COUNT = 60
 
 if __name__ == '__main__':
 
