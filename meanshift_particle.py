@@ -1,6 +1,7 @@
 import cv2
 import os
 import numpy as np
+import particle_filter as pf
 
 # Data Sets
 DATASET_PATH = "data/"
@@ -9,16 +10,16 @@ DATA_SETS = ["CarChase1", "CarChase2",  # 0,1
              'ISS', 'Boat', 'KinBall3',  # 2,3,4 [Occlusion: Kinball3]
              'DriftCar1', 'Drone1', 'Boxing1', 'Bike',  # 5,6,7,8 [Occlusion: Boxing1]
              'MotorcycleChase', 'Elephants']  # 9, 10 [Occlusion: Elephants]
-DATASET_NUMBER = 10
+DATASET_NUMBER = 7
 
 # Constants
 DATASET_NAME = DATA_SETS[DATASET_NUMBER]
 DATASET_FOLDER = DATASET_PATH + DATASET_NAME + "/img"
 GROUND_TRUTH_PATH = DATASET_PATH + DATASET_NAME + "/groundtruth_rect.txt"
-OUTPUT_PATH = "output/meanshift/" + DATASET_NAME + "/"
+OUTPUT_PATH = "output/particle/" + DATASET_NAME + "/"
 
 # Save Images or Not
-SAVE_IMAGES = False
+SAVE_IMAGES = True
 
 # Debugging mode for extra outputs
 DEBUG = True
@@ -30,6 +31,13 @@ PARAMS = [1, 1,
           3, 1]
 PARAM_NUMBER = PARAMS[DATASET_NUMBER]
 
+# Particle Filter Parameters
+STD = 10
+NUM_PARTICLES = 200
+PF_RESAMPLE_THRESH = 0.5
+PF_RESAMPLE_METHOD = 2
+GOOD_THRESH = 150
+T_COUNT = 60
 
 if __name__ == '__main__':
 
@@ -63,7 +71,22 @@ if __name__ == '__main__':
     # setup output folder
     if SAVE_IMAGES:
         if not os.path.exists(OUTPUT_PATH):
-            os.mkdir(OUTPUT_PATH)
+            os.makedirs(OUTPUT_PATH)
+
+        # Use this for Linux
+        # fourcc = cv2.VideoWriter_fourcc('M', 'J', 'P', 'G')
+        fourcc = cv2.VideoWriter_fourcc('D', 'I', 'V', 'X')
+        # Make sure size matches output frame i.e. y, x
+        out = cv2.VideoWriter(OUTPUT_PATH + 'video.avi', fourcc, 30, (first_frame.shape[1], first_frame.shape[0]))
+
+    # Set up tracking methods
+    # particles = []
+    # weights = []
+    particles = pf.create_gaussian_particles(mean=(x + w / 2, y + h / 2), std=(STD, STD), N=NUM_PARTICLES)
+    weights = np.ones(NUM_PARTICLES) / NUM_PARTICLES
+    x_pos = []
+    y_pos = []
+    # Use Particle Filter also
 
     # 1) Set parameters according to dataset
     if PARAM_NUMBER == 1:
@@ -118,8 +141,45 @@ if __name__ == '__main__':
         # 9) Calculate the BackProject of frame with the histogram
         dst = cv2.calcBackProject([hsv], hist_channels, roi_hist, hist_range, 1)
 
-        # 10) Perform meanshift tracking
-        ret, track_window = cv2.meanShift(dst, track_window, term_crit)
+        # 10 a) Perform meanshift tracking
+        ret, track_window_obs = cv2.meanShift(dst, track_window, term_crit)
+        # 10 b) Use Particle Filter to improve observation accuracy
+        # use last XX frames to extrapolate motion using np.polyfit
+        # Will help estimate recent velocity of motion
+        # Assuming a linear model and see how it works
+
+        # i) Estimate current velocity of object using linear regression
+        vel = pf.estVelocity(x_pos, y_pos, t_count=T_COUNT) # Use 3 with KinBall3
+
+        # ii) Predict position of object
+        pf.predict(particles, vel=vel, std=STD)
+
+        centre_obs = pf.getCentreFromWindow(track_window_obs)
+        noise = np.random.uniform(0.0, STD)
+        centre_obs = tuple(p + noise for p in centre_obs)
+
+        # iii) Update weights of particles based on dist from observation
+        pf.update(particles, weights, 'gaussian', centre_obs)
+
+        # iv) Esimate new position based on particles and weights
+        centre_est, _ = pf.estimate(particles, weights)
+
+        x_pos.append(centre_est[0])
+        y_pos.append(centre_est[1])
+        track_window = pf.getTrackWindow(centre_est, track_window_obs)
+
+        # evalPart checks how well each particle fits the histogram obtained using backprop
+        particles = particles.clip(np.zeros(2), np.array((frame.shape[1], frame.shape[0]))-1)
+
+        # v) Evaluate particles based on backprop
+        f = pf.evalParticle(dst, particles.T)
+        good = particles[f >= GOOD_THRESH]
+        bad = particles[f < GOOD_THRESH]
+
+        # vi) Resample particles if required
+        if good.size < PF_RESAMPLE_THRESH * NUM_PARTICLES:
+            pf.resample(particles, weights, 1 * NUM_PARTICLES, PF_RESAMPLE_METHOD)
+        # pf.resample(particles, weights, PF_RESAMPLE_THRESH * NUM_PARTICLES, PF_RESAMPLE_METHOD)
 
         # 11) Draw the resultant box on image
         x, y, w, h = track_window
@@ -127,6 +187,10 @@ if __name__ == '__main__':
 
         if DEBUG:
             cv2.imshow("backprop", dst)
+            pf.draw_particles(frame, good, (0, 255, 0))
+            pf.draw_particles(frame, bad, (0, 255, 0))
+            # frame = cv2.circle(frame, (int(centre_est[0]), int(centre_est[1])), 2, (0, 255, 0), -1)
+            # frame = cv2.circle(frame, (int(centre_obs[0]), int(centre_obs[1])), 2, (255, 0, 0), -1)
 
         # 12) Display the output
         cv2.imshow('tracking_output', output_img)
@@ -137,3 +201,7 @@ if __name__ == '__main__':
             output_file = OUTPUT_PATH + "{0:0=5d}".format(i) + '.jpg'
             print(output_file)
             cv2.imwrite(output_file, output_img)
+            out.write(frame)
+
+    if SAVE_IMAGES:
+        out.release()
