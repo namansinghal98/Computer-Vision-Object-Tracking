@@ -15,16 +15,13 @@ GROUND_TRUTH_PATH = DATASET_PATH + DATASET_NAME + "/groundtruth_rect.txt"
 OUTPUT_PATH = "output/kalman/" + DATASET_NAME + "/"
 SAVE_IMAGES = True
 
-
+# croping the image with given start and end points
 def cropObject(stPoint, enPoint, image):
     crop_img = image[stPoint[1]:enPoint[1], stPoint[0]:enPoint[0]]
-    # cv.imshow("crop_img", crop_img)
-    # cv.waitKey(0)
     return crop_img
 
-
+# marking a rectangle on the image with given start and end points
 def markObject(stPoint, enPoint, image, count, imageName):
-    # clone_image = image.copy()
     line_color = None
     # different colors for predicted, detected and corrected measures
     if imageName == "Predicted":
@@ -44,7 +41,8 @@ if __name__ == "__main__":
     if SAVE_IMAGES:
         if not os.path.exists(OUTPUT_PATH):
             os.makedirs(OUTPUT_PATH)
-
+    
+    # initializing the Kalman filter
     kf = cv.KalmanFilter(6, 4, 0)
     dt = float(20 / 600)
     state = None
@@ -55,7 +53,7 @@ if __name__ == "__main__":
                                     [0, 0, 0, 1, 0, 0],
                                     [0, 0, 0, 0, 1, 0],
                                     [0, 0, 0, 0, 0, 1]], np.float32)
-    # print(type(kf.transitionMatrix))
+    
     kf.measurementMatrix = np.array([[1, 0, 0, 0, 0, 0],
                                      [0, 1, 0, 0, 0, 0],
                                      [0, 0, 0, 0, 1, 0],
@@ -67,7 +65,7 @@ if __name__ == "__main__":
                                    [0, 0, 0, 5, 0, 0],
                                    [0, 0, 0, 0, 1e-2, 0],
                                    [0, 0, 0, 0, 0, 1e-2]], np.float32)
-    # print(kf.processNoiseCov)
+    
     kf.measurementNoiseCov = np.array([[1e-1, 0, 0, 0],
                                        [0, 1e-1, 0, 0],
                                        [0, 0, 1e-1, 0],
@@ -82,7 +80,6 @@ if __name__ == "__main__":
     f = open(GROUND_TRUTH_PATH)
     line = f.readline()
     lineList = line.split(",")
-    # print(lineList)
     tempXSt = int(lineList[1])
     tempXEn = int(lineList[1]) + int(lineList[3])
     tempYSt = int(lineList[2])
@@ -91,24 +88,23 @@ if __name__ == "__main__":
     # markObject((tempXSt, tempYSt), (tempXEn, tempYEn), image, 0, "template")
     template = cropObject((tempXSt, tempYSt), (tempXEn, tempYEn), image)
     h, w = template.shape
-
+    
+    total_frames = 600
     i = 0
     first_detect = True
     files = os.listdir(DATASET_FOLDER)
-
-    while i < 600:
+    
+    # loop through all the frames
+    while i < total_frames:
         print("frame" + str(i))
         i = i + 1
         file_no = str(i)
         zeros = 5 - len(file_no)
         file_name = file_no.rjust(zeros + len(file_no), '0')
         file_name = file_name + ".jpg"
-        # print(file_name)
         file_path = os.path.join(DATASET_FOLDER, file_name)
         colored_image = cv.imread(file_path)
         image = cv.imread(file_path, 0)
-        # cv.imshow('check', image)
-        # cv.waitKey(0)
 
         # -------------Prediction--------------------
         if not first_detect:
@@ -151,6 +147,7 @@ if __name__ == "__main__":
         # print("measurement ", meas)
 
         # -------------Correction--------------------
+        # for first frame, state is initialized
         if first_detect:
             kf.errorCovPre = np.array([[1, 0, 0, 0, 0, 0],
                                        [0, 1, 0, 0, 0, 0],
@@ -164,7 +161,6 @@ if __name__ == "__main__":
                               [0],
                               [meas[2, 0]],
                               [meas[3, 0]]], np.float32)
-            # print(state)
             kf.statePost = state
             first_detect = False
         else:
