@@ -4,9 +4,10 @@ import os
 import cv2
 import numpy as np
 
-DATASET = ["CarChase1", "CarChase2", "DriftCar1", "Boxing1", "KinBall3", "Elephants"]
+DATA_SETS = ["CarChase1", "CarChase2", 'KinBall3',  # 0,1,2 [Occlusion: Kinball3]
+             'DriftCar1', 'Boxing1', 'Elephants']  # 3,4,5 [Occlusion: Boxing1, Elephants]
 NUM_SET = 0
-DATASET_NAME = DATASET[NUM_SET]
+DATASET_NAME = DATA_SETS[NUM_SET]
 PREFIX = "data/" + DATASET_NAME + "/"
 DATASET_PATH = PREFIX + "img/%05d.jpg"
 GROUNDTRUTH_PATH = PREFIX + "groundtruth_rect.txt"
@@ -20,7 +21,7 @@ std = 15
 maxNoise = 5
 RESAMPLE_METHOD = 2
 RESAMPLE_THRESHOLD = .5
-
+S
 # Template Matching parameters
 METHODS_TEMP = [cv2.TM_CCOEFF, cv2.TM_CCOEFF_NORMED, cv2.TM_CCORR,
                 cv2.TM_CCORR_NORMED, cv2.TM_SQDIFF, cv2.TM_SQDIFF_NORMED]
