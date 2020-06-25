@@ -1,5 +1,6 @@
 import particle_filter as pf
 import template_matching as tm
+import os
 import cv2
 import numpy as np
 
@@ -10,6 +11,7 @@ PREFIX = "data/" + DATASET_NAME + "/"
 DATASET_PATH = PREFIX + "img/%05d.jpg"
 GROUNDTRUTH_PATH = PREFIX + "groundtruth_rect.txt"
 OUTPUT_PATH = "output/particle/" + DATASET_NAME + "/"
+SAVE_IMAGES = True
 
 # Particle filter parameters
 NUM_PARTICLES = 500
@@ -25,6 +27,10 @@ METHODS_TEMP = [cv2.TM_CCOEFF, cv2.TM_CCOEFF_NORMED, cv2.TM_CCORR,
 TM_METHOD = 1
 
 if __name__ == '__main__':
+    # setup output folder
+    if SAVE_IMAGES:
+        if not os.path.exists(OUTPUT_PATH):
+            os.makedirs(OUTPUT_PATH)
 
     img_path = DATASET_PATH
     gt_path = GROUNDTRUTH_PATH
@@ -43,6 +49,7 @@ if __name__ == '__main__':
     fid = open(gt_path, 'r+')
     gt = [int(x) for x in fid.readline().split(',')]
     fid.close()
+
     gt = gt[1:-1]
     start_point = (gt[0], gt[1])
     end_point = (gt[0] + gt[2], gt[1] + gt[3])
@@ -63,6 +70,7 @@ if __name__ == '__main__':
 
     i = 0
     while cap.isOpened() and i < MAX_ITERS:
+
         i += 1
         ret, img = cap.read()
         if not ret:
@@ -72,6 +80,7 @@ if __name__ == '__main__':
         # Move particles based on estimated velocity
         pf.predict(particles_start, None, std=std)
         pf.predict(particles_end, None, std=std)
+        print("&&")
 
         # Use template matching to get location of object
         start_point, end_point = tm.find_object(img, template, METHODS_TEMP[TM_METHOD])
@@ -100,14 +109,13 @@ if __name__ == '__main__':
 
         # Save frame
         output_file = OUTPUT_PATH + "{0:0=5d}".format(i) + '.jpg'
+        print(output_file)
         cv2.imwrite(output_file, img)
         cv2.waitKey(10)
 
         # Resample if necessary
         pf.resample(particles_start, weights_start, RESAMPLE_THRESHOLD * NUM_PARTICLES, RESAMPLE_METHOD)
         pf.resample(particles_end, weights_end, RESAMPLE_THRESHOLD * NUM_PARTICLES, RESAMPLE_METHOD)
-
-    # fid.close()
 
 
 
