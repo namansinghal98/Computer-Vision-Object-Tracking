@@ -1,10 +1,8 @@
 import cv2
 import numpy as np
 from numpy.random import randn
-# from numpy.random import random
 from numpy.random import uniform
 import scipy.stats
-# import copy
 
 from filterpy.monte_carlo import systematic_resample
 from filterpy.monte_carlo import residual_resample
@@ -65,7 +63,6 @@ def update(particles, weights, method, posm):
 
     # normalize
     weights /= sum(weights)
-    # print(weights)
 
 
 def estimate(particles, weights):
@@ -108,7 +105,6 @@ def evalParticle(backproj, particlesT):
 
 def resample(particles, weights, th, method):
     if neff(weights) < th:
-        print("Resampling")
         indexes = []
         if method == 0:
             indexes = systematic_resample(weights)
@@ -124,7 +120,7 @@ def resample(particles, weights, th, method):
 
 def estVelocity(x_pos, y_pos, t_count=15, poly=1):
     if len(x_pos) > t_count:
-        x_pos = x_pos[-t_count:]  # the colon comes after the negative index
+        x_pos = x_pos[-t_count:]
         y_pos = y_pos[-t_count:]
     elif len(x_pos) < t_count:
         return None
@@ -136,11 +132,13 @@ def estVelocity(x_pos, y_pos, t_count=15, poly=1):
     return [(x_vel(t[-1]) - x_vel(t[0])) / (t[-1] - t[0]), (y_vel(t[-1]) - y_vel(t[0])) / (t[-1] - t[0])]
 
 
+# To draw particles on the frame
 def draw_particles(image, particles, color=(0, 0, 255)):
     for p in particles:
         image = cv2.circle(image, (int(p[0]), int(p[1])), 1, color, -1)
 
 
+# To draw bounding box on the frame
 def draw_box(im, estimated, measured):
     if measured is None:
         measured = [(0, 0), (0, 0)]
@@ -148,110 +146,3 @@ def draw_box(im, estimated, measured):
     measured = [int(x) for li in measured for x in li]
     im = cv2.rectangle(im, (estimated[0], estimated[1]), (estimated[2], estimated[3]), (255, 0, 0), 2)
     im = cv2.rectangle(im, (measured[0], measured[1]), (measured[2], measured[3]), (0, 255, 0), 2)
-
-
-# def run_pf(N, iters=5, std_err=.1, xlim=(0, 20), ylim=(0, 20), init_x=None):
-def run_pf():
-    N = 50
-    iters = 50000
-    std = 5
-    maxNoise = 5.
-    method = 2
-    fol = "CarChase1"
-    test_particle_filter(N, iters, std, maxNoise, method, fol)
-
-
-def test_particle_filter(N, iters, std, maxNoise, method, fol):
-    img_path = "Datasets/" + fol + "/" + fol + "/img/%05d.jpg"
-    gt_path = "Datasets/" + fol + "/" + fol + "/groundtruth_rect.txt"
-    cap = cv2.VideoCapture(img_path)
-    ret, img = cap.read()
-    if not ret:
-        print("Error")
-        exit(0)
-    xlim = (0, np.size(img, 0))
-    ylim = (0, np.size(img, 1))
-
-    fid = open(gt_path, 'r+')
-    gt = [int(x) for x in fid.readline().split(',')]
-    gt = gt[1:-1]
-    print(gt)
-    x_m = (gt[0] + (gt[2] / 2))
-    y_m = (gt[1] + (gt[3] / 3))
-
-    # landmarks = np.array(([x for x in np.linspace(xlim[0], xlim[1], numMarks)],
-    #                      [y for y in np.linspace(ylim[0], ylim[1], numMarks)])).T
-    # NL = len(landmarks)
-
-    # init filter
-    particles = create_uniform_particles(xlim, ylim, N)
-    # particles = create_gaussian_particles(mean=(x_m, y_m), std=(std, std), N=N)
-    weights = np.ones(N) / N
-
-    draw_particles(img, particles)
-    img = cv2.circle(img, (int(x_m), int(y_m)), 2, (0, 255, 0), -1)
-    cv2.imshow('image', img)
-    cv2.waitKey(2500)
-
-    xs = [[x_m, y_m]]
-    i = 0
-    while cap.isOpened() and i < iters:
-        i += 1
-        ret, img = cap.read()
-
-        x_v = x_m - xs[-1][0]
-        y_v = y_m - xs[-1][1]
-
-        # Move particles based on estimated velocity
-        predict(particles, x_vel=x_v, y_vel=y_v, std=std)
-
-        # Measure the particle
-        # For now just use groundTruths + noise
-
-        noise = np.random.uniform(0.0, maxNoise)
-        gt = [int(x) for x in fid.readline().split(sep=',')]
-        gt = gt[1:-1]
-        x_a = (gt[0] + (gt[2] / 2))
-        y_a = (gt[1] + (gt[3] / 2))
-
-        x_m = (x_a + noise)
-        y_m = (y_a + noise)
-
-        # Update particle weight based on measurement
-        update(particles, weights, 'gaussian', x_m, y_m)
-        # print(weights)
-
-        # Check if we need to resample
-        print(neff(weights))
-        if neff(weights) < (0.75 * N):
-            print("Resampling")
-            indexes = []
-            if method == 1:
-                indexes = systematic_resample(weights)
-            elif method == 2:
-                indexes = multinomial_resample(weights)
-            elif method == 2:
-                indexes = stratified_resample(weights)
-            elif method == 2:
-                indexes = residual_resample(weights)
-
-            resample_from_index(particles, weights, indexes)
-            assert np.allclose(weights, 1 / N)
-
-        mu, var = estimate(particles, weights)
-        xs.append(mu)
-
-        draw_particles(img, particles)
-        img = cv2.circle(img, (int(mu[0]), int(mu[1])), 2, (0, 255, 0), -1)
-        img = cv2.circle(img, (int(x_a), int(y_a)), 2, (255, 0, 0), -1)
-        cv2.imshow('image', img)
-        cv2.waitKey(2500)
-
-    fid.close()
-
-
-if __name__ == '__main__':
-    # print("Hello, world!")
-    # cap = cv2.VideoCapture('D:\\KP\Code\\419-Computer-Vision\\Project\\Girl\\Girl\\img\\%04d.jpg')
-    # print(cap.isOpened())
-    run_pf()
