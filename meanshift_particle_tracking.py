@@ -8,7 +8,7 @@ DATASET_PATH = "data/"
 
 DATA_SETS = ["CarChase1", "CarChase2", 'KinBall3',  # 0,1,2 [Occlusion: Kinball3]
              'DriftCar1', 'Boxing1', 'Elephants']  # 3,4,5 [Occlusion: Boxing1, Elephants]
-DATASET_NUMBER = 7
+DATASET_NUMBER = 0
 
 # Constants
 DATASET_NAME = DATA_SETS[DATASET_NUMBER]

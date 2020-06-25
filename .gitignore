@@ -129,6 +129,5 @@ dmypy.json
 .pyre/
 
 # datasets
-
 .xml
 /output/
