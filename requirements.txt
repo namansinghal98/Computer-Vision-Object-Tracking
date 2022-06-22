@@ -3,7 +3,7 @@ filterpy==1.4.5
 imutils==0.5.3
 kiwisolver==1.1.0
 matplotlib==3.0.3
-numpy==1.18.3
+numpy==1.22.0
 opencv-contrib-python==4.2.0.34
 pyparsing==2.4.7
 python-dateutil==2.8.1
